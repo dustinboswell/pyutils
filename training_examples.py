@@ -122,6 +122,9 @@ class TrainingExamples:
     def __getitem__(self, i):
         return self.examples[i]
 
+# TODO: define a number of "toy-problem" TrainingExamples of varying degrees
+# of complexity, so that each classifier can be tested against it.
+
 # Example usage.
 if __name__ == "__main__":
     te = TrainingExamples()

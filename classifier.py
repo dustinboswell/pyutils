@@ -13,7 +13,7 @@ class BinaryClassifier:
     def train(self, training_examples):
         raise "NotImplemented"
 
-    def test(self, training_examples):
+    def test(self, examples, print_level=1):
         """Computes the "area under the ROC curve". This is a way to measure the
         precision/recall WITHOUT choosing a cutoff-threshold.  It is mathematically
         equivalent to:
@@ -24,14 +24,15 @@ class BinaryClassifier:
         The algorithm below computes this average probability by effectively trying
         all combinations of positive-vs-negative examples, but does this in O(NlgN)
         instead of O(N^2)"""
-        if type(training_examples) is TrainingExamples:
-            training_examples = training_examples.examples
+        if type(examples) is TrainingExamples:
+            examples = examples.examples
 
         prob_stats = SummaryStats()
         prob_hist = Histogram()
         output1_scores = list()
         output0_scores = list()
-        for example in training_examples:
+        for example in examples:
+            assert example["_OUTPUT"] in [0,1]
             prob = self.prob_output1(example)
             prob_stats.add(prob)
             prob_key = "%1.1f-%1.1f" % (int(prob*10)/10.0, (int(prob*10)+1)/10.0)
@@ -46,8 +47,7 @@ class BinaryClassifier:
         output1_scores.sort()
         output0_scores.sort()
 
-        # TODO: make debug_output a new function param
-        if False:
+        if print_level >= 2:
             print "%d output1 scores:" % len(output1_scores),
             print ["%2.2f" % i for i in output1_scores[0:5]],
             print " ... ",
@@ -65,9 +65,11 @@ class BinaryClassifier:
             while j < len(output0_scores) and output0_scores[j] < o1_score: j += 1
             num_correct_rank += j
         rank_accuracy = float(num_correct_rank) / (len(output0_scores)*len(output1_scores))
-        print "Ranking accuracy: ('area under the ROC curve') %2.3f" % rank_accuracy
-        print "Prob output: mean=%1.3f std=%1.3f" % (prob_stats.avg(), prob_stats.std())
-        print "Histogram of prob output:", prob_hist
+
+        if print_level >= 1:
+            print "Ranking accuracy: ('area under the ROC curve') %2.3f" % rank_accuracy
+            print "Prob output: mean=%1.3f std=%1.3f" % (prob_stats.avg(), prob_stats.std())
+            print "Histogram of prob output:", prob_hist
         return rank_accuracy
 
 import random

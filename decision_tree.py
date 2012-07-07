@@ -43,10 +43,11 @@ class DecisionTree:
             self.examples_sorted_by_feature[feature] = list(self.examples)
             self.examples_sorted_by_feature[feature].sort(key=lambda e: e[feature])
 
-    def training_error(self):
+    def avg_squared_error(self, examples=None):
         "returns avg squared error of output"
+        examples = examples or self.examples  # by default, use training examples
         output_stats = SummaryStats()
-        for example in self.examples:
+        for example in examples:
             prediction = self.predict(example)
             output_stats.add((prediction - float(example["_OUTPUT"])) ** 2)
         return output_stats.avg()
@@ -227,7 +228,7 @@ def test_DecisionTree_medium():
 
     # check that we learned the training set with enough accuracy
     tree.print_tree()
-    assert tree.training_error() < 0.001
+    assert tree.avg_squared_error(te.examples) < 0.001
 
     # TODO: train with a much larger training set, and test how it performs on non-training examples
 
