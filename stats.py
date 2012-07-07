@@ -333,6 +333,63 @@ def conf_interval(k, n, conf='0.95'):
     upper = (topleft + topright) / bottom
     return (lower, upper)
 
+def binomial_conf_interval(k, n, prior_k, prior_n, conf='0.95'):
+    """NOT FINISHED YET.
+    Does a form of numerical integration. Not numerically stable for values of k or n > 1000. """
+    print "binomial_conf_interval(k=%d, n=%d, prior_k=%d, prior_n=%d, conf=%s)" % (k,n,prior_k,prior_n,conf)
+    k += prior_k
+    n += prior_n
+    assert n >= k >= 0
+    likelihoods = []
+    prev_likelihood = 0.0
+    prev_p = 0.0
+    NUM_POINTS = 100000
+    for i in xrange(1, NUM_POINTS + 1):
+        # TODO: handle special case if p = 0 or 1
+        p = i / float(NUM_POINTS)
+        # P(p|k,n) = P(k,n|p) * P(p) / P(k,n)
+        # P(p) is just the prior, and turns out to have the same form as P(k,n|p)
+        # -- that is, it's equivalent to just add in prior_k and prior_n (as we did)
+        # P(k,n) is also a constant, with respect to p.
+        # Also note that we don't care about absolute values -- we only care about
+        # the *relative* probability of one *p* vs. the others.
+        # So, despite the formula being somewhat complex, it all boils down to just:
+        if i == NUM_POINTS:
+            likelihood = 1.0 if n == k else 0.0
+        else:
+            likelihood = math.exp(k * math.log(p) + (n-k) * math.log(1-p))  # i.e. (p^k)*((1-p)^(n-k))
+
+        sample_p = (prev_p + p) / 2
+        sample_likelihood = (likelihood + prev_likelihood) / 2
+        likelihoods.append((sample_p, sample_likelihood))
+
+        prev_p = p
+        prev_likelihood = likelihood
+
+    total_likelihood = sum(prob for (p, prob) in likelihoods)
+    print "total_likelihood=", total_likelihood
+    lower_tail_sum = 0.0
+    lower_tail_sum_goal = total_likelihood * ((1 - float(conf)) / 2.0)
+    print "lower_tail_sum_goal=", lower_tail_sum_goal
+    for (p, prob) in likelihoods:
+        lower_tail_sum += prob
+        if lower_tail_sum >= lower_tail_sum_goal:
+            lower = p
+            break
+
+    upper_tail_sum = 0.0
+    upper_tail_sum_goal = total_likelihood * ((1 - float(conf)) / 2.0)
+    print "upper_tail_sum_goal=", upper_tail_sum_goal
+    for (p, prob) in reversed(likelihoods):
+        upper_tail_sum += prob
+        if upper_tail_sum >= upper_tail_sum_goal:
+            upper = p
+            break
+
+    print lower, upper
+    print
+    return (lower, upper)
+
 def prob_beta_greater_than(k, n, p):
     """Suppose you flip a coin 'n' times, and get heads 'k' times.
     This function returns the probability that the true heads-bias of that coin is
@@ -465,4 +522,13 @@ class DistSampleTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    binomial_conf_interval(0, 0, 0, 98, '0.95')
+    binomial_conf_interval(0, 0, 0, 99, '0.95')
+    binomial_conf_interval(0, 0, 1, 99, '0.95')
+    binomial_conf_interval(0, 0, 2, 99, '0.95')
+    binomial_conf_interval(0, 0, 1, 100, '0.95')
+    binomial_conf_interval(0, 0, 2, 100, '0.95')
+    binomial_conf_interval(20, 2000, 1, 99, '0.95')
+    binomial_conf_interval(2000, 200000, 1, 99, '0.95')
+
     unittest.main()
