@@ -82,34 +82,54 @@ class DecisionTree:
             self.subtrees[1].print_tree(prefix)
 
     def _find_best_split(self, feature):
-        """Returns (less_than_threshold, train_err)"""
+        """Find the best threshold value to split this node on, using @feature.
+        Returns (less_than_threshold, split_err).
+        The @less_than_threshold is what you use to "decide", i.e.:
+            if example[feature] < less_than_threshold:
+                decide_left ...
+            else:
+                decide_right ...
+        Note that this method doesn't actually split anything: it just figures out
+        which threshold value would be best to split at.
+        """
         self._sort_by_features(feature)
         left_output_stats = SummaryStats()
         right_output_stats = SummaryStats()
         assert len(self.examples) == len(self.examples_sorted_by_feature[feature])
+
+        # To begin, let's assume we push all examples into the right child node.
         for example in self.examples:
             right_output_stats.add(float(example["_OUTPUT"]))
 
+        # Now, move the examples one by one to the left child node.
+        # (Note the examples sorted by value -- it's as if we're adjusting the
+        # less_than_threshold.)
+        # After each example, calculate the goodness-of-split, and track the best.
         best_threshold = None
         best_err = None
         last_feature_value = None
         for example in self.examples_sorted_by_feature[feature]:
             feature_value = example[feature]
             output_value = float(example["_OUTPUT"])
+
+            # Speed optimization: skip over examples with same feature value.
             if feature_value == last_feature_value:
                 left_output_stats.add(output_value)
                 right_output_stats.remove(output_value)
                 continue
 
-            last_feature_value = feature_value  # for next iteration
+            last_feature_value = feature_value  # remember for next iteration
 
             left_count = left_output_stats.count()
             right_count = right_output_stats.count()
+
+            # Edge-case: left or right child is empty
             if left_count == 0 or right_count == 0:
                 left_output_stats.add(output_value)
                 right_output_stats.remove(output_value)
                 continue  # not a true split
 
+            # Compute goodness-of-split: weighted average of the 2 output variances.
             if left_count <= 1: left_err = 0
             else: left_err = (left_count - 1) * left_output_stats.var()
 
@@ -128,11 +148,14 @@ class DecisionTree:
         del self.examples_sorted_by_feature[feature]
         return (best_threshold, best_err)
 
-    def _split_subtrees(self):
+    def _split_subtrees(self, feature, threshold):
         """Reset the two subtrees based on the current decision function."""
+        assert feature is not None
+        assert threshold is not None
         assert len(self.examples) >= 2
-        assert self.decision_feature is not None
-        assert self.decision_threshold is not None
+
+        self.decision_feature = feature
+        self.decision_threshold = threshold
 
         self.subtrees = [DecisionTree(), DecisionTree()]
         for example in self.examples:
@@ -173,9 +196,7 @@ class DecisionTree:
         if best_feature is None: return
 
         # Accept the best decision
-        self.decision_feature = best_feature
-        self.decision_threshold = best_threshold
-        self._split_subtrees()
+        self._split_subtrees(best_feature, best_threshold)
 
         # Grow recursively at each branch.
         self.subtrees[0].grow_tree(features_considered_per_node)
