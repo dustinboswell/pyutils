@@ -5,7 +5,8 @@ from stats import SummaryStats
 from training_examples import TrainingExamples
 
 class DecisionTree:
-    """A real-output-valued decision tree, whose nodes split on real-valued
+    """http://www-users.cs.umn.edu/~kumar/dmbook/ch4.pdf
+    A real-output-valued decision tree, whose nodes split on real-valued
     inputs. You can still use this for binary classification by having 0/1 outputs.
     """
     def __init__(self):
